@@ -1,4 +1,4 @@
-# django-like-project
+# django-iine-project
 Djangoでイイね機能を実装するテストプロジェクトです。
 
 # 動作イメージ
