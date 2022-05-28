@@ -1,0 +1,137 @@
+{% extends 'bbs/base.html' %}
+{% load bbs %}
+
+{% block content %}
+<section class="mt-5">
+  <div class="card">
+    <div class="card-header">
+      {% if is_user_liked_for_post %}
+      <button type="button" id="ajax-like-for-post" style="border:none;background:none">
+        <i class="fas fa-heart text-danger" id="like-for-post-icon"></i>
+      </button>
+      {% else %}
+      <button type="button" id="ajax-like-for-post" style="border:none;background:none">
+        <i class="far fa-heart text-danger" id="like-for-post-icon"></i>
+      </button>
+      {% endif %}
+      <span id="like-for-post-count">{{ like_for_post_count }}</span>
+      <span>件のイイね</span>
+    </div>
+
+    <div class="card-body">
+      <div class="card-title">
+        <h2>#{{ post.pk }} {{ post.title }}</h2>
+      </div>
+      <div class="card-text">
+        <span class="fs-6">{{ post.created_at | date:'Y-m-d'}}</span>
+        <p class="fs-6">{{ post.writer }}</p>
+        <div class="mt-5">
+          {{ post.text }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% for comment in post.comment_set.all %}
+  <div class="card mt-4">
+    <div class="card-body">
+      <div class="card-title">
+        <span class="fs-6">{{ comment.created_at | date:'Y-m-d'  }}</span>
+        <p class="fs-6">{{ comment.writer }}</p>
+      </div>
+      <div class="card-text">
+        <div class="mt-4 mb-4">
+          {{ comment.text }}
+        </div>
+        <div class="card-footer">
+          {% with comment_like_data|get_item:comment.pk as dic %}
+          {% if dic.is_user_liked_for_comment %}
+          <button type="button" class="ajax-like-for-comment" data-pk="{{ comment.pk }}" style="border:none;background:none">
+            <i class="fas fa-heart text-danger" id="like-for-comment-icon-{{comment.pk}}"></i>
+          </button>
+          {% else %}
+          <button type="button" class="ajax-like-for-comment" data-pk="{{ comment.pk }}" style="border:none;background:none">
+            <i class="far fa-heart text-danger" id="like-for-comment-icon-{{comment.pk}}"></i>
+          </button>
+          {% endif %}
+          <span id="like-for-comment-count-{{comment.pk}}">{{ dic.count }}</span>
+          <span>件のイイね</span>
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+{% endblock %}
+
+{% block extrajs %}
+<script type="text/javascript">
+  /* ポストに対するイイね */
+  document.getElementById('ajax-like-for-post').addEventListener('click', e => {
+    e.preventDefault();
+    const url = '{% url "bbs:like_for_post" %}';
+    fetch(url, {
+      method: 'POST',
+      body: `post_pk={{post.pk}}`,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+        'X-CSRFToken': '{{ csrf_token }}',
+      },
+    }).then(response => {
+      return response.json();
+    }).then(response => {
+      const counter = document.getElementById('like-for-post-count')
+      const icon = document.getElementById('like-for-post-icon')
+      counter.textContent = response.like_for_post_count
+      if (response.method == 'create') {
+        icon.classList.remove('far')
+        icon.classList.add('fas')
+        icon.id = 'like-for-post-icon'
+      } else {
+        icon.classList.remove('fas')
+        icon.classList.add('far')
+        icon.id = 'like-for-post-icon'
+      }
+    }).catch(error => {
+      console.log(error);
+    });
+  });
+
+  /* コメントに対するイイね */
+  const likeCommentButtons = document.getElementsByClassName('ajax-like-for-comment');
+  for (const button of likeCommentButtons) {
+    button.addEventListener('click', e => {
+      const pk = button.dataset.pk
+      e.preventDefault();
+      const url = '{% url "bbs:like_for_comment" %}';
+      fetch(url, {
+        method: 'POST',
+        body: `comment_pk=${pk}`,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+          'X-CSRFToken': '{{ csrf_token }}',
+        },
+      }).then(response => {
+        return response.json();
+      }).then(response => {
+        const counter = document.getElementById(`like-for-comment-count-${pk}`)
+        const icon = document.getElementById(`like-for-comment-icon-${pk}`)
+        counter.textContent = response.like_for_comment_count
+        if (response.method == 'create') {
+          icon.classList.remove('far')
+          icon.classList.add('fas')
+          icon.id = `like-for-comment-icon-${pk}`
+        } else {
+          icon.classList.remove('fas')
+          icon.classList.add('far')
+          icon.id = `like-for-comment-icon-${pk}`
+        }
+      }).catch(error => {
+        console.log(error);
+      });
+    });
+  }
+</script>
+{% endblock %}
