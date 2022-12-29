@@ -122,3 +122,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # add
 AUTH_USER_MODEL = 'register.User'
+LOGIN_URL = 'register:login'
+LOGIN_REDIRECT_URL = 'bbs:post_list'

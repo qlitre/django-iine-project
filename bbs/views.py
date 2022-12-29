@@ -1,12 +1,29 @@
 from django.views import generic
 from .models import Post, Comment, LikeForPost, LikeForComment
-from django.http import JsonResponse  # 追加
-from django.shortcuts import get_object_or_404  # 追加
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect
 
 
 class PostList(generic.ListView):
     template_name = 'bbs/post_list.html'
     model = Post
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # {'pk':{'count':ポストに対するイイネ数,'is_user_liked_for_post':bool},}という辞書を追加していく
+        d = {}
+        for post in self.object_list:
+            # postに対するイイね数
+            like_for_post_count = post.likeforpost_set.count()
+            # ログイン中のユーザーがイイねしているかどうか
+            is_user_liked_for_post = False
+            if not self.request.user.is_anonymous:
+                if post.likeforpost_set.filter(user=self.request.user).exists():
+                    is_user_liked_for_post = True
+
+            d[post.pk] = {'count': like_for_post_count, 'is_user_liked_for_post': is_user_liked_for_post}
+        context['post_like_data'] = d
+        return context
 
 
 class PostDetail(generic.DetailView):
@@ -19,22 +36,23 @@ class PostDetail(generic.DetailView):
         # ポストに対するイイね数
         context['like_for_post_count'] = like_for_post_count
         # ログイン中のユーザーがイイねしているかどうか
-        if self.object.likeforpost_set.filter(user=self.request.user).exists():
-            context['is_user_liked_for_post'] = True
-        else:
-            context['is_user_liked_for_post'] = False
+        is_user_liked_for_post = False
+        if not self.request.user.is_anonymous:
+            if self.object.likeforpost_set.filter(user=self.request.user).exists():
+                is_user_liked_for_post = True
+        context['is_user_liked_for_post'] = is_user_liked_for_post
 
-        # {'pk':{'count':コメント数,'is_user_like_for_comment':bool},}という辞書を追加していく
+        # {'pk':{'count':コメントに対するイイネ数,'is_user_like_for_comment':bool},}という辞書を追加していく
         d = {}
         for comment in self.object.comment_set.all():
             like_for_comment_count = comment.likeforcomment_set.count()
-            if comment.likeforcomment_set.filter(user=self.request.user).exists():
-                is_user_liked_for_comment = True
-            else:
-                is_user_liked_for_comment = False
+            is_user_liked_for_comment = False
+            if not self.request.user.is_anonymous:
+                if comment.likeforcomment_set.filter(user=self.request.user).exists():
+                    is_user_liked_for_comment = True
             d[comment.pk] = {'count': like_for_comment_count, 'is_user_liked_for_comment': is_user_liked_for_comment}
 
-        context[f'comment_like_data'] = d
+        context['comment_like_data'] = d
 
         return context
 
